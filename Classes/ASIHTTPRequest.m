@@ -308,6 +308,8 @@ static NSOperationQueue *sharedQueue = nil;
 	[self setURL:newURL];
 	[self setCancelledLock:[[[NSRecursiveLock alloc] init] autorelease]];
 	[self setDownloadCache:[[self class] defaultCache]];
+    [self setLastProgressUpdate:0];
+    [self setEnableProgressiveRetryReset:false];
 	return self;
 }
 
@@ -1739,6 +1741,16 @@ static NSOperationQueue *sharedQueue = nil;
 
 	[ASIHTTPRequest updateProgressIndicator:&downloadProgressDelegate withProgress:[self totalBytesRead]+[self partialDownloadSize] ofTotal:[self contentLength]+[self partialDownloadSize]];
 
+    if (self.enableProgressiveRetryReset) {
+        unsigned long long progress = [self totalBytesRead] + [self partialDownloadSize];
+        unsigned long long total = [self contentLength] + [self partialDownloadSize];
+        if (progress > (self.lastProgressUpdate + (0.05*total))) {
+            NSLog(@"New progress update %llu o total %llu - %llu procent", progress, total, progress*100/total);
+            self.lastProgressUpdate = progress;
+            [self setRetryCount:0];
+        }
+    }
+  
 	#if NS_BLOCKS_AVAILABLE
     if (bytesReceivedBlock) {
 		unsigned long long totalSize = [self contentLength] + [self partialDownloadSize];
@@ -5123,4 +5135,8 @@ static NSOperationQueue *sharedQueue = nil;
 @synthesize PACFileData;
 
 @synthesize isSynchronous;
+
+@synthesize lastProgressUpdate;
+@synthesize enableProgressiveRetryReset;
+
 @end
