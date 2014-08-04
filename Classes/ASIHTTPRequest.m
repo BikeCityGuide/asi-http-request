@@ -1748,6 +1748,7 @@ static NSOperationQueue *sharedQueue = nil;
             NSLog(@"New progress update %llu o total %llu - %llu procent", progress, total, progress*100/total);
             self.lastProgressUpdate = progress;
             [self setRetryCount:0];
+            self.error = nil;
         }
     }
   
