@@ -1154,7 +1154,10 @@ static NSOperationQueue *sharedQueue = nil;
 	}
 	
 	[self setLastBytesSent:0];
-	[self setContentLength:0];
+    // HACK - in case of compressed response download we hardcode contentLength basing on expected value - so, afterwards w should not overwrite this value if it equals expected file size
+	if ([self contentLength] != self.expectedFileSizeForCompressedResponse) {
+        [self setContentLength:0];
+    }
 	[self setResponseHeaders:nil];
 	if (![self downloadDestinationPath]) {
 		[self setRawResponseData:[[[NSMutableData alloc] init] autorelease]];
@@ -1649,6 +1652,8 @@ static NSOperationQueue *sharedQueue = nil;
 	[headRequest setShouldUseRFC2616RedirectBehaviour:[self shouldUseRFC2616RedirectBehaviour]];
 	[headRequest setShouldAttemptPersistentConnection:[self shouldAttemptPersistentConnection]];
 	[headRequest setPersistentConnectionTimeoutSeconds:[self persistentConnectionTimeoutSeconds]];
+    [headRequest setEnableProgressiveRetryReset:[self enableProgressiveRetryReset]];
+    [headRequest setExpectedFileSizeForCompressedResponse:[self expectedFileSizeForCompressedResponse]];
 	
 	[headRequest setMainRequest:self];
 	[headRequest setRequestMethod:@"HEAD"];
@@ -1717,9 +1722,9 @@ static NSOperationQueue *sharedQueue = nil;
 {
 	// We won't update download progress until we've examined the headers, since we might need to authenticate
 	if (![self responseHeaders] || [self needsRedirect] || !([self contentLength] || [self complete])) {
-		return;
+        return;
 	}
-		
+    
 	unsigned long long bytesReadSoFar = [self totalBytesRead]+[self partialDownloadSize];
 	unsigned long long value = 0;
 	
@@ -2250,9 +2255,10 @@ static NSOperationQueue *sharedQueue = nil;
 
 			// Workaround for Apache HEAD requests for dynamically generated content returning the wrong Content-Length when using gzip
 			if ([self mainRequest] && [self allowCompressedResponse] && length == 20 && [self showAccurateProgress] && [self shouldResetDownloadProgress]) {
-				[[self mainRequest] setShowAccurateProgress:NO];
+                // HACK - we hardcode contentLenght value from expected as we cannot get it from compressed response header
+                [[self mainRequest] setContentLength:[theRequest expectedFileSizeForCompressedResponse]];
+				[[self mainRequest] setShowAccurateProgress:YES];
 				[[self mainRequest] incrementDownloadSizeBy:1];
-
 			} else {
 				[theRequest setContentLength:length];
 				if ([self showAccurateProgress] && [self shouldResetDownloadProgress]) {
@@ -2261,7 +2267,9 @@ static NSOperationQueue *sharedQueue = nil;
 			}
 
 		} else if ([self showAccurateProgress] && [self shouldResetDownloadProgress]) {
-			[theRequest setShowAccurateProgress:NO];
+            // HACK - we hardcode contentLenght value from expected as we cannot get it from compressed response header
+            [theRequest setContentLength:[theRequest expectedFileSizeForCompressedResponse]];
+			[theRequest setShowAccurateProgress:YES];
 			[theRequest incrementDownloadSizeBy:1];
 		}
 	}
@@ -5147,5 +5155,6 @@ static NSOperationQueue *sharedQueue = nil;
 
 @synthesize lastProgressUpdate;
 @synthesize enableProgressiveRetryReset;
+@synthesize expectedFileSizeForCompressedResponse;
 
 @end
