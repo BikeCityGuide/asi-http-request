@@ -1000,7 +1000,7 @@ typedef void (^ASIDataBlock)(NSData *data);
 #endif
 @property (retain) ASIDataDecompressor *dataDecompressor;
 @property (assign) BOOL shouldWaitToInflateCompressedResponses;
-@property (assign) int lastProgressUpdate;
+@property (assign) unsigned long long lastProgressUpdate;
 @property (assign) bool enableProgressiveRetryReset;
 @property (assign) unsigned long long expectedFileSizeForCompressedResponse;
 
